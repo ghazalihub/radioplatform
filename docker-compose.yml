@@ -57,6 +57,21 @@ services:
     ports:
       - "8006:8006"
 
+  education-service:
+    build: ./services/education_service
+    ports:
+      - "8009:8009"
+
+  integration-service:
+    build: ./services/integration_service
+    ports:
+      - "8010:8010"
+
+  audit-service:
+    build: ./services/audit_service
+    ports:
+      - "8011:8011"
+
   web-viewer:
     build: ./apps/web_viewer
     ports:

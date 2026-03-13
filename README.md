@@ -11,7 +11,11 @@ This platform is a production-grade, hospital-scale radiology imaging system tha
 - **AI Processing Pipeline**: Asynchronous GPU-accelerated processing.
 - **Reporting Service**: Structured reporting and HL7/FHIR integration.
 - **Auth Service**: Secure OAuth2/JWT authentication and RBAC.
-- **Web Viewer**: High-performance diagnostic viewer based on Cornerstone3D.
+- **Education Service**: Teaching database with cases and quizzes.
+- **Integration Service**: HL7/FHIR support for hospital EMR integration.
+- **Audit Service**: High-volume security auditing.
+- **Analytics Service**: Departmental performance metrics and radiologist productivity.
+- **Web Viewer**: High-performance diagnostic viewer based on Cornerstone3D with MPR support.
 
 ## Getting Started
 (Detailed instructions to be added)

@@ -23,6 +23,10 @@ function App() {
     setImageIds([mockImageId]);
   };
 
+  const startVoiceDictation = () => {
+    alert("Voice dictation started... (Mocking Web Speech API)");
+  };
+
   return (
     <div className="App">
       <header className="App-header">
@@ -47,6 +51,11 @@ function App() {
         </div>
         <div className="viewer-container">
           <DICOMViewer imageIds={imageIds} />
+          <div className="reporting-panel">
+            <button onClick={startVoiceDictation}>Start Dictation</button>
+            <textarea placeholder="Radiology Report..."></textarea>
+            <button>Save Report</button>
+          </div>
         </div>
       </main>
     </div>

@@ -27,6 +27,22 @@ class Report(ReportCreate):
 
 # Mock database
 reports_db = {}
+templates_db = {
+    "CHEST_XR": {
+        "name": "Chest X-Ray",
+        "findings": ["Lungs are clear", "Heart size is normal", "No pleural effusion"],
+        "impression": "Normal Chest X-Ray"
+    },
+    "BRAIN_MRI": {
+        "name": "Brain MRI",
+        "findings": ["No acute intracranial hemorrhage", "Ventricular system is midline", "Normal flow voids"],
+        "impression": "Normal Brain MRI"
+    }
+}
+
+@app.get("/templates")
+async def get_templates():
+    return templates_db
 
 @app.post("/reports", response_model=Report)
 async def create_report(report_in: ReportCreate):

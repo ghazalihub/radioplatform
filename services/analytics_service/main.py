@@ -22,6 +22,22 @@ async def get_turnaround_time():
         "target_hours": 4.0
     }
 
+@app.get("/metrics/radiologist-productivity")
+async def get_radiologist_productivity():
+    """Returns productivity metrics per radiologist."""
+    return [
+        {"radiologist_id": "RAD1", "reports_today": 25, "average_time_per_report": "12m"},
+        {"radiologist_id": "RAD2", "reports_today": 18, "average_time_per_report": "15m"}
+    ]
+
+@app.get("/metrics/modality-throughput")
+async def get_modality_throughput():
+    """Returns studies processed per hour per modality."""
+    return {
+        "CT": [10, 12, 15, 8, 14, 11], # Last 6 hours
+        "MRI": [2, 3, 2, 4, 3, 2]
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8008)

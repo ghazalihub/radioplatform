@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+hl7
+fhir.resources
+requests

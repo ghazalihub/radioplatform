@@ -107,6 +107,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user_dict = fake_users_db.get(form_data.username)
+
+    # In production, check for MFA token here
+    # mfa_token = form_data.scopes # or a custom field
+
     if not user_dict or not verify_password(form_data.password, user_dict["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

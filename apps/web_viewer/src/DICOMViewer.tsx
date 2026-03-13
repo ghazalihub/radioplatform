@@ -29,17 +29,25 @@ const DICOMViewer: React.FC<{ imageIds: string[] }> = ({ imageIds }) => {
 
     const renderingEngineId = 'myRenderingEngine';
     const viewportId = 'CT_AXIAL';
+    const viewportIdSagittal = 'CT_SAGITTAL';
+    const viewportIdCoronal = 'CT_CORONAL';
     const toolGroupId = 'myToolGroup';
 
     const renderingEngine = new RenderingEngine(renderingEngineId);
 
-    const viewportInput = {
-      viewportId,
-      element: elementRef.current,
-      type: Enums.ViewportType.STACK,
-    };
+    const viewportInputArray: any[] = [
+      {
+        viewportId,
+        element: elementRef.current,
+        type: Enums.ViewportType.ORTHOGRAPHIC,
+        defaultOptions: {
+          orientation: Enums.OrientationAxis.AXIAL,
+        },
+      },
+      // In a real MPR viewer, you would have separate div elements for Sagittal and Coronal
+    ];
 
-    renderingEngine.enableElement(viewportInput);
+    renderingEngine.setViewports(viewportInputArray);
 
     // Tools Setup
     cornerstoneTools.addTool(WindowLevelTool);
