@@ -1,0 +1,6 @@
+pydicom
+pynetdicom
+fastapi
+uvicorn
+requests
+python-multipart
