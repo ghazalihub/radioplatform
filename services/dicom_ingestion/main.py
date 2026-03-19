@@ -9,11 +9,29 @@ from pynetdicom.sop_class import (
 )
 import requests
 import io
+import sys
 from utils import extract_metadata, validate_dicom
+
+# Add shared directory to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../shared')))
 
 # Configuration
 STORAGE_SERVICE_URL = os.getenv("STORAGE_SERVICE_URL", "http://storage-service:8003/upload")
 METADATA_SERVICE_URL = os.getenv("METADATA_SERVICE_URL", "http://metadata-service:8002/instances")
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8001/token")
+
+def get_internal_token():
+    """Get a service token for internal communication."""
+    try:
+        resp = requests.post(AUTH_SERVICE_URL, data={
+            "username": "admin",
+            "password": "admin" # In production, use service account credentials
+        })
+        resp.raise_for_status()
+        return resp.json()["access_token"]
+    except Exception as e:
+        print(f"Failed to get internal token: {e}")
+        return None
 
 def handle_find(event):
     """Handle a C-FIND request event."""
@@ -53,8 +71,11 @@ def handle_store(event):
     buffer.seek(0)
 
     files = {'file': ('dicom_file.dcm', buffer)}
+    token = get_internal_token()
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+
     try:
-        storage_resp = requests.post(STORAGE_SERVICE_URL, files=files)
+        storage_resp = requests.post(STORAGE_SERVICE_URL, files=files, headers=headers)
         storage_resp.raise_for_status()
         file_info = storage_resp.json()
         file_path = file_info['file_path']
@@ -69,7 +90,7 @@ def handle_store(event):
     try:
         base_url = METADATA_SERVICE_URL.rsplit('/', 1)[0]
         # Create Patient
-        resp = requests.post(f"{base_url}/patients", json=metadata["patient"])
+        resp = requests.post(f"{base_url}/patients", json=metadata["patient"], headers=headers)
         resp.raise_for_status()
 
         # Create Study

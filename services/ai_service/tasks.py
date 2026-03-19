@@ -12,23 +12,23 @@ STORAGE_SERVICE_URL = os.getenv("STORAGE_SERVICE_URL", "http://storage-service:8
 METADATA_SERVICE_URL = os.getenv("METADATA_SERVICE_URL", "http://metadata-service:8002")
 
 @celery_app.task(name="process_study")
-def process_study(study_instance_uid: str, instance_uids: list):
+def process_study(study_instance_uid: str, instance_uids: list, model_name: str = "fracture_detection"):
     """Asynchronous task to process a study with AI."""
-    print(f"Starting AI processing for study {study_instance_uid}")
+    print(f"Starting AI processing for study {study_instance_uid} using model {model_name}")
 
     results = []
     for sop_uid in instance_uids:
         # 1. Simulate downloading from storage
         # 2. Simulate AI inference (e.g. fracture detection)
         time.sleep(1) # Simulate work
-        finding = {"sop_instance_uid": sop_uid, "fracture_detected": False, "confidence": 0.95}
+        finding = {"sop_instance_uid": sop_uid, "result": "negative", "confidence": 0.98, "model": model_name}
         results.append(finding)
 
         # Save finding back to metadata service as an annotation
         try:
             requests.post(f"{METADATA_SERVICE_URL}/annotations", json={
                 "sop_instance_uid": sop_uid,
-                "label": "fracture_detection",
+                "label": f"ai_inference_{model_name}",
                 "data": finding
             })
         except Exception as e:

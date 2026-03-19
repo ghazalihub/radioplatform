@@ -7,9 +7,11 @@ function App() {
   const [imageIds, setImageIds] = useState<string[]>([]);
   const [studies, setStudies] = useState<any[]>([]);
 
+  const DICOMWEB_BASE_URL = process.env.REACT_APP_DICOMWEB_URL || 'http://localhost:8005/rs';
+
   const searchStudies = async () => {
     try {
-      const resp = await fetch(`http://localhost:8005/rs/studies?00100020=${searchQuery}`);
+      const resp = await fetch(`${DICOMWEB_BASE_URL}/studies?00100020=${searchQuery}`);
       const data = await resp.json();
       setStudies(data);
     } catch (e) {
@@ -18,14 +20,70 @@ function App() {
   };
 
   const loadStudy = async (studyUid: string) => {
-    // In a real system, fetch series and instances to get WADO-RS URLs
-    const mockImageId = `wado-rs:http://localhost:8005/rs/studies/${studyUid}/series/1.2.3/instances/1.2.3.4`;
-    setImageIds([mockImageId]);
+    try {
+      // 1. Fetch series for study
+      const seriesResp = await fetch(`${DICOMWEB_BASE_URL}/studies/${studyUid}/series`);
+      const seriesList = await seriesResp.json();
+
+      if (seriesList.length > 0) {
+        const firstSeries = seriesList[0];
+        const seriesUid = firstSeries["0020000E"].Value[0];
+
+        // 2. Fetch instances for series
+        const instanceResp = await fetch(`${DICOMWEB_BASE_URL}/studies/${studyUid}/series/${seriesUid}/instances`);
+        const instanceList = await instanceResp.json();
+
+        if (instanceList.length > 0) {
+          const newImageIds = instanceList.map((inst: any) => {
+            const sopUid = inst["00080018"].Value[0];
+            return `wado-rs:${DICOMWEB_BASE_URL}/studies/${studyUid}/series/${seriesUid}/instances/${sopUid}`;
+          });
+          setImageIds(newImageIds);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading study details:", e);
+    }
   };
 
   const startVoiceDictation = () => {
     alert("Voice dictation started... (Mocking Web Speech API)");
   };
+
+  const isMobile = window.innerWidth <= 768;
+
+  if (isMobile) {
+    return (
+      <div className="App mobile-view">
+        <header className="App-header">
+          <h1>RadMobile</h1>
+        </header>
+        <main>
+          <div className="notification-banner">
+            Critical finding: Brain Hemorrhage detected (Study: 1.2.840...)
+          </div>
+          <div className="search-bar">
+            <input
+              type="text"
+              placeholder="Search Patient..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className="viewer-container" style={{ flexDirection: 'column' }}>
+            <DICOMViewer imageIds={imageIds} />
+            <div className="study-list">
+              {studies.map(study => (
+                <div key={study.study_instance_uid} className="study-item" onClick={() => loadStudy(study.study_instance_uid)}>
+                  {study.study_description}
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="App">

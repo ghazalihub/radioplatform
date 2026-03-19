@@ -38,6 +38,15 @@ async def get_modality_throughput():
         "MRI": [2, 3, 2, 4, 3, 2]
     }
 
+@app.get("/metrics/predictive-workload")
+async def get_predictive_workload():
+    """Predicts workload for the next 24 hours."""
+    return {
+        "predicted_studies": 450,
+        "confidence_interval": [400, 500],
+        "peak_hour": "10:00 AM"
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8008)

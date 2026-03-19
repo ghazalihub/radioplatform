@@ -15,6 +15,13 @@ services:
     ports:
       - "6379:6379"
 
+  elasticsearch:
+    image: elasticsearch:7.17.0
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+
   auth-service:
     build: ./services/auth_service
     ports:
@@ -23,7 +30,9 @@ services:
       DATABASE_URL: postgresql://admin:password@db:5432/radiology
 
   metadata-service:
-    build: ./services/metadata_service
+    build:
+      context: .
+      dockerfile: ./services/metadata_service/Dockerfile
     ports:
       - "8002:8002"
     environment:
@@ -35,7 +44,9 @@ services:
       - "8003:8003"
 
   dicom-ingestion:
-    build: ./services/dicom_ingestion
+    build:
+      context: .
+      dockerfile: ./services/dicom_ingestion/Dockerfile
     ports:
       - "11112:11112"
       - "8004:8004"
@@ -71,6 +82,19 @@ services:
     build: ./services/audit_service
     ports:
       - "8011:8011"
+
+  collaboration-service:
+    build: ./services/collaboration_service
+    ports:
+      - "8012:8012"
+
+  compliance-service:
+    build: ./services/compliance_service
+    ports:
+      - "8013:8013"
+
+  # Desktop workstation doesn't need to be in docker-compose as it's a client app
+  # But we could add a VNC-based workstation container if needed.
 
   web-viewer:
     build: ./apps/web_viewer

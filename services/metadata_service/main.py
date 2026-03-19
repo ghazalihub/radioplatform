@@ -7,6 +7,16 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import os
+import sys
+from elasticsearch import Elasticsearch
+
+# Add shared directory to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../shared')))
+from auth_utils import get_current_user, RoleChecker
+
+# Elasticsearch for advanced indexing
+ES_URL = os.getenv("ELASTICSEARCH_URL", "http://elasticsearch:9200")
+es = Elasticsearch([ES_URL])
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:password@db:5432/radiology")
 
@@ -60,7 +70,7 @@ def get_db():
         db.close()
 
 @app.post("/patients")
-def create_patient(patient: PatientCreate, db: Session = Depends(get_db)):
+def create_patient(patient: PatientCreate, db: Session = Depends(get_db), user: dict = Depends(RoleChecker(["admin", "radiologist"]))):
     db_patient = db.query(models.Patient).filter(models.Patient.patient_id == patient.patient_id).first()
     if not db_patient:
         db_patient = models.Patient(**patient.dict())
@@ -83,6 +93,20 @@ def create_study(study: StudyCreate, db: Session = Depends(get_db)):
         db.add(db_study)
         db.commit()
         db.refresh(db_study)
+
+        # Index into Elasticsearch
+        try:
+            es.index(index="studies", id=db_study.study_instance_uid, body={
+                "patient_id": patient.patient_id,
+                "patient_name": patient.name,
+                "study_instance_uid": db_study.study_instance_uid,
+                "study_description": db_study.study_description,
+                "study_date": db_study.study_date.isoformat() if db_study.study_date else None,
+                "accession_number": db_study.accession_number
+            })
+        except Exception as e:
+            print(f"Error indexing study in Elasticsearch: {e}")
+
     return db_study
 
 @app.post("/series")
@@ -120,11 +144,28 @@ def create_instance(instance: InstanceCreate, db: Session = Depends(get_db)):
     return db_instance
 
 @app.get("/patients")
-def get_patients(patient_id: Optional[str] = None, db: Session = Depends(get_db)):
+def get_patients(patient_id: Optional[str] = None, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     query = db.query(models.Patient)
     if patient_id:
         query = query.filter(models.Patient.patient_id == patient_id)
     return query.all()
+
+@app.get("/studies/search")
+async def search_studies_advanced(q: str):
+    """Advanced search using Elasticsearch."""
+    query = {
+        "query": {
+            "multi_match": {
+                "query": q,
+                "fields": ["patient_id", "patient_name", "study_description", "modality"]
+            }
+        }
+    }
+    try:
+        res = es.search(index="studies", body=query)
+        return [hit["_source"] for hit in res["hits"]["hits"]]
+    except Exception as e:
+        return {"error": str(e), "message": "Elasticsearch not configured"}
 
 @app.get("/studies")
 def get_studies(patient_id: Optional[str] = None, study_instance_uid: Optional[str] = None, db: Session = Depends(get_db)):

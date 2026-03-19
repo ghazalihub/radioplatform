@@ -3,8 +3,13 @@ from fastapi.responses import FileResponse
 import os
 import shutil
 import uuid
+from cryptography.fernet import Fernet
+from io import BytesIO
 
 app = FastAPI(title="Radiology Storage Service")
+
+ENCRYPTION_KEY = os.getenv("STORAGE_ENCRYPTION_KEY", Fernet.generate_key().decode())
+fernet = Fernet(ENCRYPTION_KEY.encode())
 
 HOT_STORAGE_DIR = os.getenv("HOT_STORAGE_DIR", "/tmp/radiology_hot")
 COLD_STORAGE_DIR = os.getenv("COLD_STORAGE_DIR", "/tmp/radiology_cold")
@@ -19,8 +24,11 @@ async def upload_file(file: UploadFile = File(...)):
     # All new uploads go to hot storage
     file_path = os.path.join(HOT_STORAGE_DIR, file_id)
 
+    content = await file.read()
+    encrypted_content = fernet.encrypt(content)
+
     with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(encrypted_content)
 
     return {"file_id": file_id, "file_path": file_path}
 
@@ -33,7 +41,17 @@ async def download_file(file_id: str):
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
 
-    return FileResponse(file_path)
+    with open(file_path, "rb") as buffer:
+        encrypted_content = buffer.read()
+        decrypted_content = fernet.decrypt(encrypted_content)
+
+    # Write decrypted to temporary buffer for response
+    # In a real system, use streaming with on-the-fly decryption
+    temp_path = f"{file_path}_tmp"
+    with open(temp_path, "wb") as f:
+        f.write(decrypted_content)
+
+    return FileResponse(temp_path, filename=f"{file_id}.dcm")
 
 @app.post("/archive/{file_id}")
 async def archive_file(file_id: str):

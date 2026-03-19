@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { RenderingEngine, Enums, type Types } from '@cornerstonejs/core';
+import { RenderingEngine, Enums, type Types, volumeLoader, cache } from '@cornerstonejs/core';
 import * as cornerstoneTools from '@cornerstonejs/tools';
 import { initCornerstone } from './cornerstoneInit';
 
@@ -8,7 +8,14 @@ const {
   PanTool,
   ZoomTool,
   LengthTool,
+  StackScrollTool,
+  RectangleScissorsTool,
+  SphereScissorsTool,
+  CircleScissorsTool,
+  PaintFillTool,
+  BrushTool,
   ToolGroupManager,
+  segmentation,
   Enums: csToolsEnums,
 } = cornerstoneTools;
 
@@ -29,9 +36,8 @@ const DICOMViewer: React.FC<{ imageIds: string[] }> = ({ imageIds }) => {
 
     const renderingEngineId = 'myRenderingEngine';
     const viewportId = 'CT_AXIAL';
-    const viewportIdSagittal = 'CT_SAGITTAL';
-    const viewportIdCoronal = 'CT_CORONAL';
     const toolGroupId = 'myToolGroup';
+    const volumeId = 'myVolume';
 
     const renderingEngine = new RenderingEngine(renderingEngineId);
 
@@ -44,7 +50,6 @@ const DICOMViewer: React.FC<{ imageIds: string[] }> = ({ imageIds }) => {
           orientation: Enums.OrientationAxis.AXIAL,
         },
       },
-      // In a real MPR viewer, you would have separate div elements for Sagittal and Coronal
     ];
 
     renderingEngine.setViewports(viewportInputArray);
@@ -54,6 +59,9 @@ const DICOMViewer: React.FC<{ imageIds: string[] }> = ({ imageIds }) => {
     cornerstoneTools.addTool(PanTool);
     cornerstoneTools.addTool(ZoomTool);
     cornerstoneTools.addTool(LengthTool);
+    cornerstoneTools.addTool(StackScrollTool);
+    cornerstoneTools.addTool(BrushTool);
+    cornerstoneTools.addTool(RectangleScissorsTool);
 
     const toolGroup = ToolGroupManager.createToolGroup(toolGroupId);
     if (toolGroup) {
@@ -61,6 +69,9 @@ const DICOMViewer: React.FC<{ imageIds: string[] }> = ({ imageIds }) => {
       toolGroup.addTool(PanTool.toolName);
       toolGroup.addTool(ZoomTool.toolName);
       toolGroup.addTool(LengthTool.toolName);
+      toolGroup.addTool(StackScrollTool.toolName);
+      toolGroup.addTool(BrushTool.toolName);
+      toolGroup.addTool(RectangleScissorsTool.toolName);
 
       toolGroup.addViewport(viewportId, renderingEngineId);
 
@@ -73,11 +84,33 @@ const DICOMViewer: React.FC<{ imageIds: string[] }> = ({ imageIds }) => {
       toolGroup.setToolActive(ZoomTool.toolName, {
         bindings: [{ mouseButton: csToolsEnums.MouseBindings.Secondary }],
       });
+      toolGroup.setToolActive(StackScrollTool.toolName);
     }
 
-    const viewport = renderingEngine.getViewport(viewportId) as Types.IStackViewport;
-    viewport.setStack(imageIds);
-    viewport.render();
+    const setupVolume = async () => {
+      // For MPR, we need to create a volume from the stack of images
+      const volume = await volumeLoader.createAndCacheVolume(volumeId, { imageIds });
+      volume.load();
+      const viewport = renderingEngine.getViewport(viewportId) as Types.IVolumeViewport;
+      viewport.setVolumes([{ volumeId }]);
+      viewport.render();
+    };
+    setupVolume();
+
+    // Initial segmentation setup
+    const segmentationId = 'MY_SEGMENTATION';
+    segmentation.addSegmentations([
+      {
+        segmentationId,
+        representation: {
+          type: csToolsEnums.SegmentationRepresentations.Labelmap,
+          data: {
+            volumeId: segmentationId,
+          },
+        },
+      },
+    ]);
+
 
     return () => {
       renderingEngine.destroy();
